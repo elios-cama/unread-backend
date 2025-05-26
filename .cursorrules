@@ -1,0 +1,146 @@
+# Unread Backend - Cursor Rules
+
+## Project Overview
+This is the backend for "[unread]" - a mobile-first platform for authors to share and readers to discover original ebooks.
+
+## Tech Stack
+- **Framework**: FastAPI (Python)
+- **Database**: PostgreSQL via Supabase
+- **File Storage**: Supabase Storage
+- **Deployment**: Railway
+- **Authentication**: JWT + OAuth (Google, Apple)
+
+## Code Style & Standards
+
+### Python
+- Use Python 3.11+
+- Follow PEP 8 style guidelines
+- Use type hints for all function parameters and return values
+- Use async/await for all database and I/O operations
+- Prefer Pydantic models for data validation
+- Use dependency injection for database sessions and services
+
+### File Organization
+- Keep models in `app/models/`
+- Keep API routes in `app/api/`
+- Keep business logic in `app/services/`
+- Keep database operations in `app/repositories/`
+- Keep utilities in `app/utils/`
+- Keep configuration in `app/core/`
+
+### Naming Conventions
+- Use snake_case for variables, functions, and file names
+- Use PascalCase for classes and Pydantic models
+- Use UPPER_CASE for constants
+- Prefix private methods with underscore
+- Use descriptive names for database tables and columns
+
+### Database
+- Use SQLAlchemy ORM with async support
+- Always use database transactions for multi-step operations
+- Use Alembic for database migrations
+- Follow naming convention: tables in plural (users, ebooks, collections)
+- Use UUIDs for primary keys where appropriate
+
+### API Design
+- Follow RESTful principles
+- Use proper HTTP status codes
+- Include comprehensive error handling
+- Use Pydantic models for request/response validation
+- Group related endpoints using APIRouter
+- Use dependency injection for authentication and authorization
+
+### Security
+- Never commit secrets or API keys
+- Use environment variables for all configuration
+- Implement proper authentication and authorization
+- Validate all user inputs
+- Use HTTPS in production
+- Implement rate limiting for public endpoints
+
+### Error Handling
+- Use custom exception classes
+- Provide meaningful error messages
+- Log errors appropriately
+- Return consistent error response format
+
+### Testing
+- Write unit tests for all business logic
+- Use pytest with async support
+- Mock external dependencies
+- Aim for >80% code coverage
+- Test both success and failure scenarios
+
+## Key Features to Implement
+
+### Core Entities
+- Users (Authors & Readers)
+- Ebooks (with metadata and files)
+- Collections/Series
+- Share Links
+- Reading Progress
+- Reviews/Comments
+
+### Authentication & Authorization
+- JWT-based authentication
+- OAuth integration (Google, Apple)
+- Role-based access control (Author, Reader)
+- Email verification
+
+### File Management
+- Ebook upload (EPUB, MOBI, PDF)
+- Cover image upload
+- File validation and processing
+- Secure file storage with Supabase Storage
+
+### API Endpoints Structure
+```
+/api/v1/
+├── auth/          # Authentication endpoints
+├── users/         # User management
+├── ebooks/        # Ebook CRUD operations
+├── collections/   # Collection management
+├── shares/        # Share link generation
+├── reading/       # Reading progress tracking
+└── reviews/       # Review system
+```
+
+### Environment Variables Required
+- DATABASE_URL
+- SUPABASE_URL
+- SUPABASE_ANON_KEY
+- SUPABASE_SERVICE_KEY
+- JWT_SECRET_KEY
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- APPLE_CLIENT_ID
+- APPLE_CLIENT_SECRET
+
+## Development Workflow
+1. Create feature branches from main
+2. Write tests before implementing features
+3. Use black for code formatting
+4. Use isort for import sorting
+5. Run flake8 for linting
+6. Ensure all tests pass before committing
+
+## Deployment Notes
+- Use Railway for hosting
+- Set up environment variables in Railway dashboard
+- Use Railway's PostgreSQL addon or connect to Supabase
+- Configure proper logging for production
+- Set up health check endpoints
+
+## Performance Considerations
+- Use database indexing for frequently queried fields
+- Implement caching for static data
+- Use async operations for I/O bound tasks
+- Optimize file upload/download processes
+- Consider CDN for file delivery
+
+## Future Enhancements
+- Background job processing for file conversion
+- Real-time notifications
+- Analytics and reporting
+- Payment integration
+- Advanced search functionality 
