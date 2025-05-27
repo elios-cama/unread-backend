@@ -22,6 +22,12 @@ reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/auth/login"
 )
 
+# Optional OAuth2 for endpoints that can work with or without auth
+optional_oauth2 = OAuth2PasswordBearer(
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False
+)
+
 
 async def get_db() -> AsyncSession:
     """Get database session."""
@@ -56,6 +62,28 @@ async def get_current_user(
     user = await user_service.get_user_by_id(db, user_id=UUID(token_data.username))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+async def get_current_user_optional(
+    db: AsyncSession = Depends(get_db), token: Optional[str] = Depends(optional_oauth2)
+) -> Optional[User]:
+    """Get current authenticated user (optional)."""
+    if token is None:
+        return None
+    
+    try:
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
+        token_data = TokenData(username=payload.get("sub"))
+    except (jwt.JWTError, ValidationError):
+        return None
+    
+    if token_data.username is None:
+        return None
+    
+    user = await user_service.get_user_by_id(db, user_id=UUID(token_data.username))
     return user
 
 

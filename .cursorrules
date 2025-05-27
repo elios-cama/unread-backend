@@ -144,3 +144,6 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 - Analytics and reporting
 - Payment integration
 - Advanced search functionality 
+
+## Commands and test
+- Always use python3 for commands. 

@@ -15,7 +15,7 @@ from app.core.config import settings
 from app.db.database import Base
 
 # Import all models to ensure they are registered with SQLAlchemy
-from app.models import user, ebook, collection, share, reading, review
+from app.models import user, ebook, collection, share, reading
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

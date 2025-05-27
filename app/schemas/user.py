@@ -1,24 +1,18 @@
 """
-Pydantic schemas for User model.
+Simplified User schemas.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, validator
-
-from app.models.user import UserRole
 
 
 class UserBase(BaseModel):
     """Base user schema."""
     email: EmailStr
     username: str
-    display_name: str
-    bio: Optional[str] = None
-    website_url: Optional[str] = None
-    role: UserRole = UserRole.READER
 
 
 class UserCreate(UserBase):
@@ -26,7 +20,7 @@ class UserCreate(UserBase):
     password: str
     
     @validator('username')
-    def username_alphanumeric(cls, v):
+    def username_validation(cls, v):
         assert v.isalnum(), 'Username must be alphanumeric'
         assert len(v) >= 3, 'Username must be at least 3 characters'
         assert len(v) <= 50, 'Username must be at most 50 characters'
@@ -40,17 +34,14 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
-    display_name: Optional[str] = None
-    bio: Optional[str] = None
-    website_url: Optional[str] = None
-    role: Optional[UserRole] = None
+    email: Optional[EmailStr] = None
+    username: Optional[str] = None
 
 
 class UserInDBBase(UserBase):
     """Base schema for user in database."""
     id: UUID
     is_active: bool
-    is_verified: bool
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime] = None
@@ -71,15 +62,10 @@ class UserInDB(UserInDBBase):
     apple_id: Optional[str] = None
 
 
-class UserProfile(BaseModel):
-    """Schema for public user profile."""
+class UserPublic(BaseModel):
+    """Schema for public user information."""
     id: UUID
     username: str
-    display_name: str
-    bio: Optional[str] = None
-    website_url: Optional[str] = None
-    profile_image_url: Optional[str] = None
-    role: UserRole
     created_at: datetime
     
     class Config:
