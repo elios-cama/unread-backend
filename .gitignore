@@ -165,3 +165,9 @@ logs/
 *.pfx
 secrets/
 .secrets 
+
+# Cover
+*/covers/
+*/generated_books/
+*book_cover_mask_large.png
+*book_with_custom_cover.png

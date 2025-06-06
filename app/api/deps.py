@@ -1,5 +1,5 @@
 """
-API dependencies for database sessions and authentication.
+API dependencies for database sessions and OAuth authentication.
 """
 
 from typing import Generator, Optional
@@ -18,13 +18,14 @@ from app.models.user import User
 from app.schemas.user import TokenData
 from app.services import user_service
 
+# Updated token URL to reflect OAuth endpoints
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/google"
 )
 
 # Optional OAuth2 for endpoints that can work with or without auth
 optional_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    tokenUrl=f"{settings.API_V1_STR}/auth/google",
     auto_error=False
 )
 
@@ -46,20 +47,22 @@ async def get_current_user(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        token_data = TokenData(username=payload.get("sub"))
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Could not validate credentials",
+            )
+        
+        # Convert to UUID
+        token_data = TokenData(user_id=user_id)
     except (jwt.JWTError, ValidationError):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Could not validate credentials",
         )
     
-    if token_data.username is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not validate credentials",
-        )
-    
-    user = await user_service.get_user_by_id(db, user_id=UUID(token_data.username))
+    user = await user_service.get_user_by_id(db, user_id=UUID(token_data.user_id))
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
@@ -76,14 +79,15 @@ async def get_current_user_optional(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        token_data = TokenData(username=payload.get("sub"))
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        
+        token_data = TokenData(user_id=user_id)
     except (jwt.JWTError, ValidationError):
         return None
     
-    if token_data.username is None:
-        return None
-    
-    user = await user_service.get_user_by_id(db, user_id=UUID(token_data.username))
+    user = await user_service.get_user_by_id(db, user_id=UUID(token_data.user_id))
     return user
 
 

@@ -5,10 +5,41 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 
 ## Tech Stack
 - **Framework**: FastAPI (Python)
-- **Database**: PostgreSQL via Supabase
+- **Database**: PostgreSQL via Supabase (separate dev/prod instances)
 - **File Storage**: Supabase Storage
 - **Deployment**: Railway
-- **Authentication**: JWT + OAuth (Google, Apple)
+- **Authentication**: JWT + OAuth (Google, Apple) - OAuth ONLY, no email/password
+
+## Database Configuration
+
+### Two Database Setup
+- **Development Database**: Configured in `env.development`
+  - Supabase project: `odrtvtmkapkqutgsmybf`
+  - Used for local development and testing
+- **Production Database**: Configured in `env.production` 
+  - Supabase project: `jsxrkooqkdoiuwlzshoc`
+  - Used for live application
+
+### Migration Workflow
+- Copy appropriate environment file to `.env` before running migrations
+- Development: `cp env.development .env && alembic upgrade head`
+- Production: `cp env.production .env && alembic upgrade head`
+- Both databases should always be kept in sync
+
+## Authentication - OAuth Only
+
+### User Model (OAuth-Only)
+- **NO email field** - users identified by OAuth IDs only
+- **NO password field** - OAuth providers handle authentication
+- Required: `username` (unique, editable)
+- OAuth IDs: `google_id`, `apple_id` (at least one required)
+- Profile: `avatar_url` from OAuth provider
+- Timestamps: `created_at`, `updated_at`, `last_login`
+
+### OAuth Providers
+- **Google Sign-In**: ID token verification
+- **Apple Sign-In**: ID token + authorization code verification
+- **Account Linking**: Users can link multiple OAuth providers
 
 ## Code Style & Standards
 
@@ -41,6 +72,7 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 - Use Alembic for database migrations
 - Follow naming convention: tables in plural (users, ebooks, collections)
 - Use UUIDs for primary keys where appropriate
+- **Important**: Import all models in `app/models/__init__.py` for Alembic detection
 
 ### API Design
 - Follow RESTful principles
@@ -74,18 +106,17 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 ## Key Features to Implement
 
 ### Core Entities
-- Users (Authors & Readers)
+- Users (OAuth-only authentication)
 - Ebooks (with metadata and files)
 - Collections/Series
 - Share Links
 - Reading Progress
-- Reviews/Comments
 
 ### Authentication & Authorization
 - JWT-based authentication
-- OAuth integration (Google, Apple)
-- Role-based access control (Author, Reader)
-- Email verification
+- OAuth integration (Google, Apple) - ONLY
+- Username-based user identification
+- No email/password authentication
 
 ### File Management
 - Ebook upload (EPUB, MOBI, PDF)
@@ -96,20 +127,19 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 ### API Endpoints Structure
 ```
 /api/v1/
-├── auth/          # Authentication endpoints
-├── users/         # User management
+├── auth/          # OAuth authentication endpoints
+├── users/         # User management (username-based)
 ├── ebooks/        # Ebook CRUD operations
 ├── collections/   # Collection management
 ├── shares/        # Share link generation
-├── reading/       # Reading progress tracking
-└── reviews/       # Review system
+└── reading/       # Reading progress tracking
 ```
 
 ### Environment Variables Required
-- DATABASE_URL
-- SUPABASE_URL
-- SUPABASE_ANON_KEY
-- SUPABASE_SERVICE_KEY
+- DATABASE_URL (different for dev/prod)
+- SUPABASE_URL (different for dev/prod)
+- SUPABASE_ANON_KEY (different for dev/prod)
+- SUPABASE_SERVICE_KEY (different for dev/prod)
 - JWT_SECRET_KEY
 - GOOGLE_CLIENT_ID
 - GOOGLE_CLIENT_SECRET
@@ -123,11 +153,13 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 4. Use isort for import sorting
 5. Run flake8 for linting
 6. Ensure all tests pass before committing
+7. Test migrations on development database first
+8. Deploy migrations to production database after verification
 
 ## Deployment Notes
 - Use Railway for hosting
 - Set up environment variables in Railway dashboard
-- Use Railway's PostgreSQL addon or connect to Supabase
+- Use separate Supabase projects for dev/prod
 - Configure proper logging for production
 - Set up health check endpoints
 
@@ -138,12 +170,14 @@ This is the backend for "[unread]" - a mobile-first platform for authors to shar
 - Optimize file upload/download processes
 - Consider CDN for file delivery
 
+## Commands and Testing
+- Always use python3 for commands
+- Database migrations: Copy appropriate env file to .env first
+- Check database schema: `python3 check_db_schema.py`
+
 ## Future Enhancements
 - Background job processing for file conversion
 - Real-time notifications
 - Analytics and reporting
 - Payment integration
 - Advanced search functionality 
-
-## Commands and test
-- Always use python3 for commands. 

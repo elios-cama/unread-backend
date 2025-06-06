@@ -3,10 +3,10 @@ Database connection and session management.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
+from app.db.base_class import Base
 
 # Create async engine
 engine = create_async_engine(
@@ -19,9 +19,6 @@ engine = create_async_engine(
 AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
-
-# Create base class for models
-Base = declarative_base()
 
 
 async def get_db() -> AsyncSession:
