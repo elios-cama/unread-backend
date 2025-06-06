@@ -1,5 +1,5 @@
 """
-User management endpoints.
+User management endpoints for OAuth-only users.
 """
 
 from typing import Any, List
@@ -32,26 +32,14 @@ async def update_current_user_profile(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
     """Update current user profile."""
-    # Check if username is being changed and if it's already taken
-    if user_in.username and user_in.username != current_user.username:
-        existing_user = await user_service.get_user_by_username(db, user_in.username)
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail="Username already taken"
-            )
-    
-    # Check if email is being changed and if it's already taken
-    if user_in.email and user_in.email != current_user.email:
-        existing_user = await user_service.get_user_by_email(db, user_in.email)
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail="Email already registered"
-            )
-    
-    user = await user_service.update_user(db, current_user, user_in)
-    return user
+    try:
+        user = await user_service.update_user(db, current_user, user_in)
+        return user
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
 
 
 @router.get("/{user_id}", response_model=UserPublic)
@@ -65,6 +53,38 @@ async def get_user_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+@router.get("/username/{username}", response_model=UserPublic)
+async def get_user_by_username(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    username: str,
+) -> Any:
+    """Get user profile by username (public information only)."""
+    user = await user_service.get_user_by_username(db, username)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+
+@router.get("/check-username/{username}")
+async def check_username_availability(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    username: str,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """Check if username is available."""
+    existing_user = await user_service.get_user_by_username(db, username)
+    
+    # Username is available if no user exists or it belongs to current user
+    is_available = not existing_user or existing_user.id == current_user.id
+    
+    return {
+        "username": username,
+        "available": is_available
+    }
 
 
 @router.get("/", response_model=List[UserPublic])
