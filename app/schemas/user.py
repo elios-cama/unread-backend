@@ -4,10 +4,14 @@ Frontend-friendly data models for mobile app development.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID
 
 from pydantic import BaseModel, field_validator
+
+if TYPE_CHECKING:
+    from app.schemas.ebook import EbookListItem
+    from app.schemas.collection import CollectionWithAuthor
 
 
 # ============================================================================
@@ -169,7 +173,7 @@ class UserDashboard(BaseModel):
     profile: UserProfile
     stats: UserStats
     recent_ebooks: List["EbookListItem"] = []
-    recent_collections: List["CollectionListItem"] = []
+    recent_collections: List["CollectionWithAuthor"] = []
     
     class Config:
         from_attributes = True
@@ -195,9 +199,4 @@ class UserInDB(BaseModel):
         from_attributes = True
 
 
-# Forward references for imports
-from app.schemas.ebook import EbookListItem
-from app.schemas.collection import CollectionListItem
-
-UserDashboard.model_rebuild()
-AuthResponse.model_rebuild() 
+# Note: model_rebuild() calls moved to __init__.py to handle circular imports 
