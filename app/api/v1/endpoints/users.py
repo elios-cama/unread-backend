@@ -10,13 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api import deps
 from app.models.user import User
-from app.schemas.user import User as UserSchema, UserUpdate, UserPublic
+from app.schemas.user import UserProfile, UserUpdate, UserPublic
 from app.services import user_service
 
 router = APIRouter()
 
 
-@router.get("/me", response_model=UserSchema)
+@router.get("/me", response_model=UserProfile)
 async def get_current_user_profile(
     current_user: User = Depends(deps.get_current_user),
 ) -> Any:
@@ -24,7 +24,7 @@ async def get_current_user_profile(
     return current_user
 
 
-@router.put("/me", response_model=UserSchema)
+@router.put("/me", response_model=UserProfile)
 async def update_current_user_profile(
     *,
     db: AsyncSession = Depends(deps.get_db),
