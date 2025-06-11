@@ -3,7 +3,7 @@ User service for Supabase-integrated business logic operations.
 """
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from uuid import UUID
 import uuid
 
@@ -11,22 +11,31 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
+from app.repositories.user import user_repository
 from app.schemas.user import OAuthUserCreate, UserUpdate
 
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> Optional[User]:
     """Get user by ID (same as Supabase auth.users.id)."""
-    result = await db.execute(select(User).where(User.id == user_id))
-    return result.scalar_one_or_none()
-
-
-# Email functionality removed - OAuth-only authentication
+    return await user_repository.get(db, user_id)
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
     """Get user by username."""
-    result = await db.execute(select(User).where(User.username == username))
-    return result.scalar_one_or_none()
+    return await user_repository.get_by_username(db, username)
+
+
+async def get_users(
+    db: AsyncSession,
+    skip: int = 0,
+    limit: int = 20,
+    search: Optional[str] = None,
+) -> List[User]:
+    """Get users with pagination and search."""
+    users, total = await user_repository.search_users(
+        db, search=search, skip=skip, limit=limit, active_only=True
+    )
+    return users
 
 
 async def create_user_from_supabase(db: AsyncSession, supabase_user_data: Dict[str, Any]) -> User:
@@ -56,20 +65,22 @@ async def create_user_from_supabase(db: AsyncSession, supabase_user_data: Dict[s
     # Ensure username is unique
     username = await _generate_unique_username(db, base_username)
     
-    # Create user with Supabase UUID as primary key
-    db_user = User(
-        id=user_id,  # Use Supabase UUID directly!
+    # Create user using repository
+    user_data = OAuthUserCreate(
         username=username,
-        email=email,
-        provider=provider,
+        google_id=user_id if provider == "google" else None,
+        apple_id=user_id if provider == "apple" else None,
         avatar_url=avatar_url,
-        is_active=True,
     )
     
-    db.add(db_user)
-    await db.commit()
-    await db.refresh(db_user)
-    return db_user
+    # Create user with Supabase UUID as primary key
+    user_dict = user_data.model_dump()
+    user_dict["id"] = user_id  # Use Supabase UUID directly!
+    user_dict["email"] = email
+    user_dict["provider"] = provider
+    user_dict["is_active"] = True
+    
+    return await user_repository.create(db, obj_in=user_dict)
 
 
 async def update_user(
@@ -80,17 +91,10 @@ async def update_user(
     
     # If updating username, ensure it's unique
     if "username" in update_data:
-        existing_user = await get_user_by_username(db, update_data["username"])
-        if existing_user and existing_user.id != user.id:
+        if await user_repository.username_exists(db, update_data["username"], exclude_user_id=user.id):
             raise ValueError("Username already exists")
     
-    for field, value in update_data.items():
-        setattr(user, field, value)
-    
-    user.updated_at = datetime.utcnow()
-    await db.commit()
-    await db.refresh(user)
-    return user
+    return await user_repository.update(db, db_obj=user, obj_in=update_data)
 
 
 async def update_last_login(db: AsyncSession, user: User) -> User:
@@ -118,16 +122,14 @@ async def _generate_unique_username(db: AsyncSession, base_username: str) -> str
         base_username = "user"
     
     # Check if base username is available
-    existing_user = await get_user_by_username(db, base_username)
-    if not existing_user:
+    if not await user_repository.username_exists(db, base_username):
         return base_username
     
     # If not available, add numbers
     counter = 1
     while True:
         test_username = f"{base_username}_{counter}"
-        existing_user = await get_user_by_username(db, test_username)
-        if not existing_user:
+        if not await user_repository.username_exists(db, test_username):
             return test_username
         counter += 1
         

@@ -25,11 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add trusted host middleware for security
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=settings.ALLOWED_HOSTS,
-)
+# Add trusted host middleware for security (disabled for development)
+# app.add_middleware(
+#     TrustedHostMiddleware,
+#     allowed_hosts=settings.ALLOWED_HOSTS,
+# )
 
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_STR)

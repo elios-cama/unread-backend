@@ -75,4 +75,43 @@ class CollectionEbookAdd(BaseModel):
 
 class CollectionEbookRemove(BaseModel):
     """Schema for removing ebook from collection."""
-    ebook_id: UUID 
+    ebook_id: UUID
+
+
+# ============================================================================
+# FRONTEND-FRIENDLY COLLECTION MODELS
+# ============================================================================
+
+class EbookCoverPreview(BaseModel):
+    """Minimal ebook data for collection previews."""
+    id: UUID
+    title: str
+    cover_image_url: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class CollectionGridItem(BaseModel):
+    """Collection data optimized for frontend grid display."""
+    id: UUID
+    name: str
+    description: Optional[str] = None
+    status: PrivacyStatus
+    author_id: UUID
+    ebook_count: int = 0
+    cover_previews: List[EbookCoverPreview] = []  # Up to 4 ebooks for preview
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class CollectionGridList(BaseModel):
+    """Schema for collection grid list response."""
+    items: List[CollectionGridItem]
+    total: int
+    page: int
+    size: int
+    pages: int
