@@ -84,11 +84,13 @@ class CollectionRepository(BaseRepository[Collection, CollectionCreate, Collecti
         collection_id: UUID,
     ) -> Optional[Collection]:
         """Get collection with its ebooks loaded."""
+        from app.models.ebook import Ebook
+        
         query = (
             select(Collection)
             .options(
                 selectinload(Collection.author),
-                selectinload(Collection.ebooks).selectinload("author")
+                selectinload(Collection.ebooks).selectinload(Ebook.author)
             )
             .where(Collection.id == collection_id)
         )
@@ -125,13 +127,19 @@ class CollectionRepository(BaseRepository[Collection, CollectionCreate, Collecti
         relationships: List[str],
     ) -> Optional[Collection]:
         """Get collection with specific relationships loaded."""
+        from app.models.ebook import Ebook
+        
         query = select(Collection).where(Collection.id == collection_id)
+        options = []
         
         for relationship in relationships:
             if relationship == "author":
-                query = query.options(selectinload(Collection.author))
+                options.append(selectinload(Collection.author))
             elif relationship == "ebooks":
-                query = query.options(selectinload(Collection.ebooks))
+                options.append(selectinload(Collection.ebooks).selectinload(Ebook.author))
+        
+        if options:
+            query = query.options(*options)
         
         result = await db.execute(query)
         return result.scalar_one_or_none()

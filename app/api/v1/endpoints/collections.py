@@ -85,7 +85,7 @@ async def get_collection(
     return collection
 
 
-@router.post("/", response_model=CollectionWithAuthor)
+@router.post("/", response_model=CollectionWithEbooks)
 async def create_collection(
     *,
     db: AsyncSession = Depends(deps.get_db),
@@ -99,7 +99,7 @@ async def create_collection(
     return collection
 
 
-@router.put("/{collection_id}", response_model=CollectionWithAuthor)
+@router.put("/{collection_id}", response_model=CollectionWithEbooks)
 async def update_collection(
     *,
     db: AsyncSession = Depends(deps.get_db),

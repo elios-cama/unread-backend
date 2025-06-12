@@ -9,7 +9,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.collection import Collection
+from app.models.collection import  CollectionColor
 from app.models.ebook import PrivacyStatus
 from app.models.user import User
 from app.repositories.collection import collection_repository
@@ -96,6 +96,7 @@ class CollectionService:
                 name=collection.name,
                 description=collection.description,
                 status=collection.status,
+                color=collection.color,
                 author_id=collection.author_id,
                 ebook_count=len(collection.ebooks) if collection.ebooks else 0,
                 cover_previews=cover_previews,
@@ -142,19 +143,23 @@ class CollectionService:
         db: AsyncSession,
         collection_in: CollectionCreate,
         user_id: UUID,
-    ) -> CollectionWithAuthor:
+    ) -> CollectionWithEbooks:
         """Create a new collection."""
         collection_data = collection_in.model_dump()
         collection_data["author_id"] = user_id
         
+        # Set random color if not provided
+        if not collection_data.get("color"):
+            collection_data["color"] = CollectionColor.random_color()
+        
         collection = await collection_repository.create(db, obj_in=collection_data)
         
-        # Reload with author relationship
+        # Reload with author and ebooks relationships
         collection = await collection_repository.get_with_relationships(
-            db, collection.id, relationships=["author"]
+            db, collection.id, relationships=["author", "ebooks"]
         )
         
-        return CollectionWithAuthor.model_validate(collection)
+        return CollectionWithEbooks.model_validate(collection)
 
     async def update_collection(
         self,
@@ -162,7 +167,7 @@ class CollectionService:
         collection_id: UUID,
         collection_in: CollectionUpdate,
         current_user: User,
-    ) -> CollectionWithAuthor:
+    ) -> CollectionWithEbooks:
         """Update a collection."""
         collection = await collection_repository.get(db, collection_id)
         
@@ -182,12 +187,12 @@ class CollectionService:
         update_data = collection_in.model_dump(exclude_unset=True)
         collection = await collection_repository.update(db, db_obj=collection, obj_in=update_data)
         
-        # Reload with author relationship
+        # Reload with author and ebooks relationships
         collection = await collection_repository.get_with_relationships(
-            db, collection.id, relationships=["author"]
+            db, collection.id, relationships=["author", "ebooks"]
         )
         
-        return CollectionWithAuthor.model_validate(collection)
+        return CollectionWithEbooks.model_validate(collection)
 
     async def delete_collection(
         self,

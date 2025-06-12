@@ -4,35 +4,35 @@ Backend API for the "[unread]" platform - a mobile-first ebook sharing platform 
 
 ## 🚀 Features
 
-- **FastAPI** - Modern, fast web framework for building APIs
-- **PostgreSQL** - Robust relational database via Supabase
-- **JWT Authentication** - Secure token-based authentication
-- **OAuth Integration** - Google and Apple sign-in support
-- **File Storage** - Supabase Storage for ebooks and cover images
-- **Async/Await** - Full async support for better performance
-- **Type Hints** - Complete type safety with Pydantic
-- **Auto Documentation** - Interactive API docs with Swagger UI
+- **FastAPI** - Modern, fast web framework with full async support
+- **PostgreSQL** - Dual Supabase instances (dev/prod) with migrations
+- **OAuth-Only Authentication** - Google and Apple sign-in via Supabase
+- **JWT Tokens** - Secure API access with token validation
+- **Repository Pattern** - Clean separation of data access and business logic
+- **Type Safety** - Complete type hints with Pydantic v2 validation
+- **Mobile-Optimized** - Grid endpoints and efficient data structures
+- **Auto Documentation** - Interactive API docs with real-time testing
 
 ## 🏗️ Architecture
 
 ### Core Entities
-- **Users** - Authors and readers with role-based access
-- **Ebooks** - Digital books with metadata and file storage
-- **Collections** - Series/groupings of ebooks by authors
-- **Share Links** - Trackable sharing with analytics
-- **Reading Progress** - User reading state and bookmarks
-- **Reviews** - User feedback and ratings
+- **Users** - OAuth-only authentication (Google/Apple) with username-based profiles
+- **Ebooks** - Digital books with metadata, file storage, and privacy controls
+- **Collections** - Series/groupings of ebooks with color theming and privacy settings
+- **Share Links** - Trackable sharing with analytics *(planned)*
+- **Reading Progress** - User reading state and bookmarks *(planned)*
+- **Reviews** - User feedback and ratings *(planned)*
 
 ### API Structure
 ```
 /api/v1/
-├── auth/          # Authentication (login, register, OAuth)
-├── users/         # User management and profiles
-├── ebooks/        # Ebook CRUD and file operations
-├── collections/   # Collection/series management
-├── shares/        # Share link generation and tracking
-├── reading/       # Reading progress and bookmarks
-└── reviews/       # Review and rating system
+├── auth/          # ✅ OAuth authentication (Supabase integration)
+├── users/         # ✅ User management and profiles
+├── ebooks/        # ✅ Ebook CRUD and file operations
+├── collections/   # ✅ Collection management with grid endpoints
+├── shares/        # 📝 Share link generation and tracking (planned)
+├── reading/       # 📝 Reading progress and bookmarks (planned)
+└── reviews/       # 📝 Review and rating system (planned)
 ```
 
 ## 🛠️ Tech Stack
@@ -103,16 +103,26 @@ For comprehensive setup instructions including:
 ### Required Environment Variables
 
 ```bash
-# Database
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/unread_db
+# Database (Supabase PostgreSQL)
+DATABASE_URL=postgresql+asyncpg://postgres.xxx:password@aws-0-region.pooler.supabase.com:5432/postgres
 
-# Security
-SECRET_KEY=your-secret-key-here
+# JWT Security
+JWT_SECRET_KEY=your-secure-jwt-secret
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# Supabase
+# Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_KEY=your-service-key
+
+# OAuth Providers
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+APPLE_CLIENT_ID=your-apple-client-id
+APPLE_CLIENT_SECRET=your-apple-client-secret
+
+# Environment
+ENVIRONMENT=development  # or production
 ```
 
 See `env.example` for all available configuration options.
@@ -150,14 +160,20 @@ python3 -m pytest tests/test_main.py
 ### Database Migrations (Alembic)
 
 ```bash
-# Create new migration after model changes
+# Development database
+cp env.development .env
 alembic revision --autogenerate -m "Description of changes"
+alembic upgrade head
 
-# Apply migrations
+# Production database  
+cp env.production .env
 alembic upgrade head
 
 # Rollback migration
 alembic downgrade -1
+
+# Check current migration status
+alembic current
 ```
 
 ### Code Quality
@@ -212,21 +228,48 @@ backend/
 
 ## 🎯 What's Implemented
 
-**✅ Core Infrastructure**:
-- Complete database schema (Users, Ebooks, Collections, etc.)
-- Authentication system with JWT
-- API structure and routing
-- Database migrations with Alembic
-- Testing framework
-- Deployment configuration
+**✅ Authentication System**:
+- Complete OAuth-only authentication (Google & Apple via Supabase)
+- JWT token generation and validation
+- User profile management with username-based identification
+- Supabase integration for user verification
 
-**📝 TODO (Next Development Phase)**:
-- Implement API endpoints
-- File upload handling
-- Supabase Storage integration
-- OAuth provider integration
-- Email verification
+**✅ Database & Models**:
+- Complete database schema with proper relationships
+- User model (OAuth-only, no email/password)
+- Ebook model with file storage support
+- Collection model with privacy controls and color theming
+- Database migrations with Alembic (dev/prod environments)
+
+**✅ Core API Endpoints**:
+- **Authentication**: `/api/v1/auth/supabase` - OAuth token exchange
+- **Users**: Profile management, username checks, user search
+- **Ebooks**: Full CRUD, file uploads, downloads with pagination
+- **Collections**: Complete collection management with grid-optimized endpoints
+- Interactive API documentation at `/docs`
+
+**✅ Advanced Features**:
+- Repository pattern for clean data access
+- Service layer for business logic
+- Privacy controls (public/private content)
+- Collection color theming for frontend gradients
+- Grid-optimized endpoints for mobile UI
+- Comprehensive error handling and logging
+
+**✅ Infrastructure**:
+- Railway deployment ready
+- Dual environment setup (dev/prod Supabase instances)
+- Async/await throughout the application
+- Type safety with Pydantic schemas
+- CORS configuration for mobile apps
+
+**📝 TODO (Future Enhancements)**:
+- Share link system with analytics
+- Reading progress tracking and bookmarks
+- Review and rating system
 - Advanced search and filtering
+- Background job processing
+- Real-time notifications
 
 ## 🤝 Contributing
 
