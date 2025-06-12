@@ -3,6 +3,8 @@ Simplified Collection model with privacy controls.
 """
 
 import uuid
+import enum
+import random
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, String, ForeignKey, Table, Enum
@@ -11,6 +13,27 @@ from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 from app.models.ebook import PrivacyStatus
+
+
+class CollectionColor(str, enum.Enum):
+    """Predefined colors for collections."""
+    BLUE = "blue"
+    GREEN = "green"
+    PURPLE = "purple"
+    ORANGE = "orange"
+    RED = "red"
+    PINK = "pink"
+    TEAL = "teal"
+    INDIGO = "indigo"
+    YELLOW = "yellow"
+    EMERALD = "emerald"
+    ROSE = "rose"
+    CYAN = "cyan"
+    
+    @classmethod
+    def random_color(cls) -> "CollectionColor":
+        """Get a random color from the available options."""
+        return random.choice(list(cls))
 
 # Association table for many-to-many relationship between collections and ebooks
 collection_ebooks = Table(
@@ -33,6 +56,9 @@ class Collection(Base):
     
     # Privacy control
     status = Column(Enum(PrivacyStatus), default=PrivacyStatus.PRIVATE, nullable=False)
+    
+    # Color for frontend display
+    color = Column(Enum(CollectionColor), default=CollectionColor.random_color, nullable=False)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)

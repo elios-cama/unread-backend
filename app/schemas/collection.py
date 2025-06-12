@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.ebook import PrivacyStatus
+from app.models.collection import CollectionColor
 
 if TYPE_CHECKING:
     from app.schemas.user import UserPublic
@@ -19,6 +20,7 @@ class CollectionBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: PrivacyStatus = Field(default=PrivacyStatus.PRIVATE)
+    color: Optional[CollectionColor] = Field(None, description="Collection color for frontend display")
 
 
 class CollectionCreate(CollectionBase):
@@ -31,6 +33,7 @@ class CollectionUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     status: Optional[PrivacyStatus] = None
+    color: Optional[CollectionColor] = None
 
 
 class CollectionInDB(CollectionBase):
@@ -98,6 +101,7 @@ class CollectionGridItem(BaseModel):
     name: str
     description: Optional[str] = None
     status: PrivacyStatus
+    color: CollectionColor
     author_id: UUID
     ebook_count: int = 0
     cover_previews: List[EbookCoverPreview] = []  # Up to 4 ebooks for preview
