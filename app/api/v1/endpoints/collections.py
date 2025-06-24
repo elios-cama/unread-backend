@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from app.api import deps
 from app.models.user import User
@@ -19,6 +20,11 @@ from app.schemas.collection import (
     CollectionWithEbooks,
     CollectionGridList,
 )
+
+
+class AddEbookRequest(BaseModel):
+    """Request model for adding an ebook to a collection."""
+    ebook_id: UUID
 from app.services.collection_service import collection_service
 
 router = APIRouter()
@@ -139,6 +145,21 @@ async def add_ebook_to_collection(
     """Add an ebook to a collection."""
     collection = await collection_service.add_ebook_to_collection(
         db, collection_id, ebook_id, current_user
+    )
+    return collection
+
+
+@router.post("/{collection_id}/ebooks", response_model=CollectionWithEbooks)
+async def add_ebook_to_collection_by_body(
+    *,
+    db: AsyncSession = Depends(deps.get_db),
+    collection_id: UUID,
+    request: AddEbookRequest,
+    current_user: User = Depends(deps.get_current_user),
+) -> Any:
+    """Add an ebook to a collection (alternative endpoint for mobile apps)."""
+    collection = await collection_service.add_ebook_to_collection(
+        db, collection_id, request.ebook_id, current_user
     )
     return collection
 

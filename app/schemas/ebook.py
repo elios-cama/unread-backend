@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.ebook import PrivacyStatus
 
@@ -105,11 +105,51 @@ class EbookDetail(EbookWithAuthor):
 
 
 class EbookUpload(BaseModel):
-    """Schema for ebook file upload response."""
-    ebook_id: UUID
+    """Response model for ebook upload operations."""
+    ebook: Ebook
+    file_path: Optional[str] = None
+    cover_path: Optional[str] = None
+    upload_success: bool = True
+    message: str = "Upload completed successfully"
+
+
+class SignedUploadUrl(BaseModel):
+    """Response model for signed upload URLs."""
+    signed_url: str
     file_path: str
+    bucket: str
+    expires_in: int
+    token: Optional[str] = None
+
+
+class UploadUrlRequest(BaseModel):
+    """Request model for getting signed upload URLs."""
+    file_extension: str
+    collection_id: Optional[UUID] = None
+    
+    @field_validator('file_extension')
+    @classmethod
+    def validate_file_extension(cls, v: str) -> str:
+        if not v.startswith('.'):
+            v = f'.{v}'
+        return v.lower()
+
+
+class ConfirmUploadRequest(BaseModel):
+    """Request model for confirming file uploads."""
+    file_path: str
+    bucket: str
+    ebook_id: Optional[UUID] = None  # For associating with existing ebook
+
+
+class UploadConfirmation(BaseModel):
+    """Response model for upload confirmation."""
+    confirmed: bool
+    file_path: str
+    bucket: str
     file_size: int
-    message: str
+    content_type: Optional[str] = None
+    last_modified: Optional[str] = None
 
 
 class EbookList(BaseModel):

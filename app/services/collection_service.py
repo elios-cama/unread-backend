@@ -185,6 +185,10 @@ class CollectionService:
             )
         
         update_data = collection_in.model_dump(exclude_unset=True)
+        # Filter out None values for required fields to avoid constraint violations
+        # Allow None for description (to clear it), but not for status
+        if 'status' in update_data and update_data['status'] is None:
+            del update_data['status']
         collection = await collection_repository.update(db, db_obj=collection, obj_in=update_data)
         
         # Reload with author and ebooks relationships
@@ -227,6 +231,8 @@ class CollectionService:
         current_user: User,
     ) -> CollectionWithEbooks:
         """Add an ebook to a collection."""
+        from app.repositories.ebook import ebook_repository
+        
         collection = await collection_repository.get_with_ebooks(db, collection_id)
         
         if not collection:
@@ -242,6 +248,20 @@ class CollectionService:
                 detail="Not authorized to modify this collection"
             )
         
+        # Check if ebook exists and user owns it
+        ebook = await ebook_repository.get(db, ebook_id)
+        if not ebook:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ebook not found"
+            )
+        
+        if ebook.author_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to add this ebook"
+            )
+        
         # Check if ebook is already in collection
         if any(ebook.id == ebook_id for ebook in collection.ebooks):
             raise HTTPException(
@@ -249,9 +269,8 @@ class CollectionService:
                 detail="Ebook is already in this collection"
             )
         
-        # Note: This would need to be implemented in the repository
-        # For now, we'll leave this as a placeholder
-        # await collection_repository.add_ebook(db, collection_id, ebook_id)
+        # Add ebook to collection
+        await collection_repository.add_ebook(db, collection_id, ebook_id)
         
         # Reload collection with ebooks
         collection = await collection_repository.get_with_ebooks(db, collection_id)
@@ -287,9 +306,8 @@ class CollectionService:
                 detail="Ebook is not in this collection"
             )
         
-        # Note: This would need to be implemented in the repository
-        # For now, we'll leave this as a placeholder
-        # await collection_repository.remove_ebook(db, collection_id, ebook_id)
+        # Remove ebook from collection
+        await collection_repository.remove_ebook(db, collection_id, ebook_id)
         
         # Reload collection with ebooks
         collection = await collection_repository.get_with_ebooks(db, collection_id)

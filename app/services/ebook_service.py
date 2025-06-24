@@ -1,5 +1,5 @@
 """
-Ebook service with privacy controls.
+Ebook service with privacy controls and enhanced mobile app support.
 """
 
 import math
@@ -38,14 +38,59 @@ class EbookService:
         ebook = await self.repository.create(db, obj_in=ebook_dict)
         return ebook
 
+    async def create_ebook_with_file(
+        self,
+        db: AsyncSession,
+        ebook_data: EbookCreate,
+        file: UploadFile,
+        current_user: User,
+        collection_id: Optional[UUID] = None
+    ) -> EbookUpload:
+        """
+        Create ebook and upload file in a single operation.
+        Better for mobile apps to avoid multiple API calls.
+        """
+        # Validate file size first
+        self.storage.validate_file_size(file, max_size_mb=50)
+        
+        # Create ebook record
+        ebook = await self.create_ebook(db, ebook_data, current_user.id)
+        
+        try:
+            # Upload file with collection organization
+            file_path, file_size, file_format = await self.storage.upload_ebook(
+                file, str(current_user.id), str(collection_id) if collection_id else None
+            )
+            
+            # Update ebook with file information
+            update_data = {
+                'file_path': file_path,
+                'file_size': file_size
+            }
+            
+            await self.repository.update(db, db_obj=ebook, obj_in=update_data)
+            
+            return EbookUpload(
+                ebook_id=ebook.id,
+                file_path=file_path,
+                file_size=file_size,
+                message="Ebook created and file uploaded successfully"
+            )
+            
+        except Exception as e:
+            # If file upload fails, clean up the created ebook record
+            await self.repository.remove(db, id=ebook.id)
+            raise e
+
     async def upload_ebook_file(
         self, 
         db: AsyncSession, 
         ebook_id: UUID, 
         file: UploadFile,
-        current_user: User
+        current_user: User,
+        collection_id: Optional[UUID] = None
     ) -> EbookUpload:
-        """Upload an ebook file."""
+        """Upload an ebook file with enhanced organization."""
         # Get ebook and verify ownership
         ebook = await self.repository.get(db, ebook_id)
         if not ebook:
@@ -60,9 +105,9 @@ class EbookService:
         # Validate file size
         self.storage.validate_file_size(file, max_size_mb=50)
         
-        # Upload file
+        # Upload file with collection organization
         file_path, file_size, _ = await self.storage.upload_ebook(
-            file, str(current_user.id)
+            file, str(current_user.id), str(collection_id) if collection_id else None
         )
         
         # Update ebook with file information
@@ -85,9 +130,10 @@ class EbookService:
         db: AsyncSession, 
         ebook_id: UUID, 
         file: UploadFile,
-        current_user: User
+        current_user: User,
+        collection_id: Optional[UUID] = None
     ) -> dict:
-        """Upload a cover image for an ebook."""
+        """Upload a cover image for an ebook with enhanced organization."""
         # Get ebook and verify ownership
         ebook = await self.repository.get(db, ebook_id)
         if not ebook:
@@ -102,8 +148,13 @@ class EbookService:
         # Validate file size (smaller limit for images)
         self.storage.validate_file_size(file, max_size_mb=5)
         
-        # Upload cover image
-        cover_path = await self.storage.upload_cover_image(file, str(ebook_id))
+        # Upload cover image with collection organization
+        cover_path = await self.storage.upload_cover_image(
+            file, 
+            str(ebook_id), 
+            str(current_user.id), 
+            str(collection_id) if collection_id else None
+        )
         
         # Update ebook with cover path
         await self.repository.update(
@@ -118,6 +169,102 @@ class EbookService:
             'cover_url': self.storage.get_cover_url(cover_path),
             'message': 'Cover image uploaded successfully'
         }
+
+    async def upload_temp_file(
+        self,
+        file: UploadFile,
+        current_user: User
+    ) -> dict:
+        """
+        Upload a temporary file for processing before ebook creation.
+        Useful for extracting metadata on the backend before creating the ebook record.
+        """
+        self.storage.validate_file_size(file, max_size_mb=50)
+        
+        temp_path, file_size = await self.storage.upload_temp_file(file, str(current_user.id))
+        
+        return {
+            'temp_path': temp_path,
+            'file_size': file_size,
+            'user_id': current_user.id,
+            'message': 'File uploaded to temporary storage for processing'
+        }
+
+    async def create_ebook_from_temp(
+        self,
+        db: AsyncSession,
+        temp_path: str,
+        ebook_data: EbookCreate,
+        current_user: User,
+        collection_id: Optional[UUID] = None
+    ) -> EbookUpload:
+        """
+        Create an ebook from a temporary file.
+        Moves the file from temp storage to permanent organized storage.
+        """
+        # Create ebook record
+        ebook = await self.create_ebook(db, ebook_data, current_user.id)
+        
+        try:
+            # Generate permanent file path
+            import uuid
+            from pathlib import Path
+            
+            file_extension = Path(temp_path).suffix
+            unique_id = str(uuid.uuid4())
+            
+            if collection_id:
+                permanent_path = f"authors/{current_user.id}/collections/{collection_id}/{unique_id}{file_extension}"
+            else:
+                permanent_path = f"authors/{current_user.id}/standalone/{unique_id}{file_extension}"
+            
+            # Move file from temp to permanent storage
+            success = await self.storage.move_temp_to_permanent(temp_path, permanent_path)
+            
+            if not success:
+                await self.repository.remove(db, id=ebook.id)
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to move file to permanent storage"
+                )
+            
+            # Get file size (you might want to store this from the temp upload)
+            # For now, we'll set it to 0 and let it be updated later
+            file_size = 0
+            
+            # Update ebook with file information
+            update_data = {
+                'file_path': permanent_path,
+                'file_size': file_size
+            }
+            
+            await self.repository.update(db, db_obj=ebook, obj_in=update_data)
+            
+            return EbookUpload(
+                ebook_id=ebook.id,
+                file_path=permanent_path,
+                file_size=file_size,
+                message="Ebook created from temporary file successfully"
+            )
+            
+        except Exception as e:
+            # Clean up on failure
+            await self.repository.remove(db, id=ebook.id)
+            raise e
+
+    def get_file_organization_info(
+        self, 
+        author_id: UUID, 
+        collection_id: Optional[UUID] = None
+    ) -> dict:
+        """
+        Get file organization information for mobile app.
+        Helps the app understand where files will be stored.
+        """
+        return self.storage.get_file_organization_info(
+            str(author_id), 
+            str(collection_id) if collection_id else None
+        )
 
     async def get_ebook(
         self, 
@@ -289,6 +436,48 @@ class EbookService:
                 ebook.cover_url = self.storage.get_cover_url(ebook.cover_image_path)
         
         return ebooks
+
+    async def update_ebook_file_path(
+        self,
+        db: AsyncSession,
+        ebook_id: UUID,
+        file_path: str,
+        file_size: int,
+        current_user: User
+    ) -> Ebook:
+        """
+        Update an ebook's file path and size after successful upload via signed URL.
+        Used with the new signed upload flow.
+        """
+        # Get ebook and verify ownership
+        ebook = await self.repository.get(db, ebook_id)
+        if not ebook:
+            raise HTTPException(status_code=404, detail="Ebook not found")
+        
+        if ebook.author_id != current_user.id:
+            raise HTTPException(
+                status_code=403, 
+                detail="Not authorized to update this ebook"
+            )
+        
+        # Update ebook with file information
+        update_data = {
+            'file_path': file_path,
+            'file_size': file_size
+        }
+        
+        updated_ebook = await self.repository.update(db, db_obj=ebook, obj_in=update_data)
+        return updated_ebook
+
+    async def cleanup_user_temp_files(self, current_user: User) -> dict:
+        """Clean up temporary files for a user."""
+        deleted_count = await self.storage.cleanup_temp_files(str(current_user.id))
+        
+        return {
+            'user_id': current_user.id,
+            'deleted_files': deleted_count,
+            'message': f'Cleaned up {deleted_count} temporary files'
+        }
 
 
 # Create service instance

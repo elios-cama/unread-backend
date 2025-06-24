@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     
     # File Storage
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
-    ALLOWED_EBOOK_EXTENSIONS: List[str] = [".epub", ".mobi", ".pdf"]
+    ALLOWED_EBOOK_EXTENSIONS: List[str] = [".epub", ".mobi", ".pdf", ".azw3"]
     ALLOWED_IMAGE_EXTENSIONS: List[str] = [".jpg", ".jpeg", ".png", ".webp"]
     
     # Email Configuration (for future use)

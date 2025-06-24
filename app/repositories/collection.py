@@ -225,6 +225,52 @@ class CollectionRepository(BaseRepository[Collection, CollectionCreate, Collecti
         
         return collections, total
 
+    async def add_ebook(
+        self,
+        db: AsyncSession,
+        collection_id: UUID,
+        ebook_id: UUID,
+    ) -> bool:
+        """Add an ebook to a collection via the junction table."""
+        from app.models.collection import collection_ebooks
+        from sqlalchemy import insert
+        
+        try:
+            # Insert into junction table
+            stmt = insert(collection_ebooks).values(
+                collection_id=collection_id,
+                ebook_id=ebook_id
+            )
+            await db.execute(stmt)
+            await db.commit()
+            return True
+        except Exception as e:
+            await db.rollback()
+            raise e
+
+    async def remove_ebook(
+        self,
+        db: AsyncSession,
+        collection_id: UUID,
+        ebook_id: UUID,
+    ) -> bool:
+        """Remove an ebook from a collection via the junction table."""
+        from app.models.collection import collection_ebooks
+        from sqlalchemy import delete
+        
+        try:
+            # Delete from junction table
+            stmt = delete(collection_ebooks).where(
+                collection_ebooks.c.collection_id == collection_id,
+                collection_ebooks.c.ebook_id == ebook_id
+            )
+            result = await db.execute(stmt)
+            await db.commit()
+            return result.rowcount > 0
+        except Exception as e:
+            await db.rollback()
+            raise e
+
 
 # Create repository instance
 collection_repository = CollectionRepository(Collection) 

@@ -18,6 +18,20 @@ class PrivacyStatus(str, enum.Enum):
     PUBLIC = "public"
     INVITE_ONLY = "invite_only"
 
+    @classmethod
+    def _missing_(cls, value):
+        """Handle missing values by trying lowercase conversion."""
+        if isinstance(value, str):
+            # Try lowercase version
+            for member in cls:
+                if member.value == value.lower():
+                    return member
+            # Try uppercase enum name matching
+            for member in cls:
+                if member.name == value.upper():
+                    return member
+        return None
+
 
 class Ebook(Base):
     __tablename__ = "ebooks"
